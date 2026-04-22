@@ -44,30 +44,23 @@ all_tasks = {}
 machine_to_intervals = {m: [] for m in range(NUM_MACHINES)}
 
 # -------------------------
-# 3. 创建变量（带紧域）
+# 3. 创建变量（使用宽松边界）
 # -------------------------
+# 注意：紧域计算在大规模问题中过于严格，可能导致不可行
+# 这里使用 horizon 作为边界，让求解器自动寻找最优解
 
 for i in range(NUM_JOBS):
-    earliest = 0
-    remaining_total = sum(durations[i])
-
     for k in range(OPS_PER_JOB):
         duration = durations[i][k]
         machine = routes[i][k]
 
-        latest = due_dates[i] - (remaining_total - duration)
-        latest = max(0, min(latest, horizon))
-
-        start = model.NewIntVar(earliest, latest, f"start_{i}_{k}")
-        end = model.NewIntVar(earliest, latest + duration, f"end_{i}_{k}")
+        # 使用 [0, horizon] 作为边界
+        start = model.NewIntVar(0, horizon, f"start_{i}_{k}")
+        end = model.NewIntVar(0, horizon, f"end_{i}_{k}")
         interval = model.NewIntervalVar(start, duration, end, f"interval_{i}_{k}")
 
         all_tasks[(i, k)] = (start, end, interval)
-
         machine_to_intervals[machine].append(interval)
-
-        earliest += duration
-        remaining_total -= duration
 
 # -------------------------
 # 4. 工艺顺序约束
